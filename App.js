@@ -1,20 +1,95 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+// App.js
+import React, { useEffect, useState, useRef } from "react";
 
-export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+import * as Location from "expo-location";
+
+import { AppLoader } from "./src/components/appLoader.components";
+import { PermissionRequest } from "./src/components/permissionRequest.components";
+import { LocationPicker } from "./src/screens/locationPicker.screens";
+
+function App() {
+	const [permissionStatus, setPermissionStatus] = useState(null); // 'granted' | 'denied' | null
+	const [loading, setLoading] = useState(true);
+	const [location, setLocation] = useState(null); // { latitude, longitude }
+	const mapRef = useRef(null);
+	const locationSubscriptionRef = useRef(null);
+
+	useEffect(() => {
+		(async () => {
+			// Ask for foreground permission on load
+			const { status } = await Location.requestForegroundPermissionsAsync();
+			setPermissionStatus(status);
+			if (status !== "granted") {
+				setLoading(false);
+				return;
+			}
+
+			// Get initial location (one-time) and then subscribe to updates
+			try {
+				const loc = await Location.getCurrentPositionAsync({
+					accuracy: Location.Accuracy.Highest,
+				});
+				const coords = {
+					latitude: loc.coords.latitude,
+					longitude: loc.coords.longitude,
+				};
+				setLocation(coords);
+				setLoading(false);
+
+				// Start watching position for live updates
+				const subscription = await Location.watchPositionAsync(
+					{
+						// Adjust these to control frequency/accuracy
+						accuracy: Location.Accuracy.Highest,
+						timeInterval: 2000, // receive updates every 2 seconds (if available)
+						distanceInterval: 1, // receive updates when moved by 1 meter (if available)
+					},
+					(locUpdate) => {
+						const newCoords = {
+							latitude: locUpdate.coords.latitude,
+							longitude: locUpdate.coords.longitude,
+						};
+						setLocation(newCoords);
+
+						// Move map to new location (animate)
+						if (mapRef.current) {
+							mapRef.current.animateToRegion(
+								{
+									...newCoords,
+									latitudeDelta: 0.005,
+									longitudeDelta: 0.005,
+								},
+								500 // ms
+							);
+						}
+					}
+				);
+				locationSubscriptionRef.current = subscription;
+			} catch (err) {
+				console.warn("Failed to get initial location", err);
+				setLoading(false);
+			}
+		})();
+
+		return () => {
+			// cleanup subscription on unmount
+			if (locationSubscriptionRef.current) {
+				locationSubscriptionRef.current.remove();
+			}
+		};
+	}, []);
+
+	if (loading) {
+		return <AppLoader message={"				Waiting for location & permissions..."} />;
+	}
+
+	if (permissionStatus !== "granted") {
+		// requirement: If permission is denied, show a text message
+		return <PermissionRequest />;
+	}
+
+
+
+	return <LocationPicker mapRef={mapRef} location={location} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default App;
