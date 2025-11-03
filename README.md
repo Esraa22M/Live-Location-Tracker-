@@ -14,5 +14,6 @@ A simple React Native application built with **Expo**, that requests location pe
 ✅ Built using `expo-location` and `react-native-maps`
 
 
-
+# demonstration video (demo)
+(https://youtube.com/shorts/tu2jsOgqSwY?si=gKfc2LkTl2YEM0kc)
 
