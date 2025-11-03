@@ -43,8 +43,7 @@ function App() {
 							latitude: locUpdate.coords.latitude,
 							longitude: locUpdate.coords.longitude,
 						};
-						setLocation(newCoords);
-
+						setLocation({ ...newCoords });
 						// Move map to new location
 						if (mapRef.current) {
 							mapRef.current.animateToRegion(
